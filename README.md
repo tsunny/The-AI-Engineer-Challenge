@@ -162,6 +162,45 @@ You'll want to make sure you share you *domains* hyperlink to ensure people can 
 
 > NOTE: Test this is the public link by trying to open your newly deployed site in an Incognito browser tab!
 
+<details>
+  <summary>🧪 Running the Application Locally</summary>
+
+1. First, install the backend dependencies:
+
+   ```bash
+   cd api
+   pip install -r requirements.txt
+   ```
+
+2. Start the backend server:
+
+   ```bash
+   python app.py
+   ```
+
+   This will start the FastAPI server at http://localhost:8000
+
+3. In a new terminal, install the frontend dependencies:
+
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+4. Start the frontend development server:
+
+   ```bash
+   npm run dev
+   ```
+
+   This will start the Next.js development server at http://localhost:3000
+
+5. Open your browser and navigate to http://localhost:3000 to use the application.
+
+6. You'll need an OpenAI API key to use the chat functionality. You can get one from [OpenAI's website](https://platform.openai.com/api-keys).
+
+</details>
+
 ### 🎉 Congratulations! 
 
 You just deployed your first LLM-powered application! 🚀🚀🚀 Get on linkedin and post your results and experience! Make sure to tag us at @AIMakerspace!
