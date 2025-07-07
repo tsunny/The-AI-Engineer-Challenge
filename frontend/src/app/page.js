@@ -8,7 +8,7 @@ export default function Home() {
   const [response, setResponse] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [apiKeyExpanded, setApiKeyExpanded] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState(null);
 
@@ -171,18 +171,16 @@ export default function Home() {
               </svg>
             </button>
 
-            {apiKeyExpanded && (
-              <div className={styles.collapsibleContent}>
-                <input
-                  id="apiKey"
-                  type="password"
-                  className={styles.input}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your OpenAI API Key"
-                />
-              </div>
-            )}
+            <div className={`${styles.collapsibleContent} ${apiKeyExpanded ? styles.collapsibleContentExpanded : ''}`}>
+              <input
+                id="apiKey"
+                type="password"
+                className={styles.input}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter your OpenAI API Key"
+              />
+            </div>
           </div>
 
           {/* Message input form */}
