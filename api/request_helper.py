@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Add current directory to Python path for Vercel
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from prompt_templates import EDUCATIONAL_PROMPT, SUMMARIZATION_PROMPT, MATH_PROBLEM_PROMPT, CREATIVE_WRITING_PROMPT, \
     DEFAULT_PROMPT
 

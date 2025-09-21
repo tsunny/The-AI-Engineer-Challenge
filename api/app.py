@@ -7,7 +7,11 @@ from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
 from openai import OpenAI
 import os
+import sys
 from typing import Optional
+
+# Add current directory to Python path for Vercel
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from request_helper import classify_query_and_get_developer_prompt
 
