@@ -1,6 +1,7 @@
 "use client";
 import styles from "./page.module.css";
 import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
@@ -42,7 +43,7 @@ export default function Home() {
         body: JSON.stringify({
           api_key: apiKey,
           user_message: userMessage,
-          developer_message: "You are a helpful assistant named Jarvis."
+          developer_message: ""
         }),
       });
 
@@ -238,7 +239,7 @@ export default function Home() {
                   {conversations[selectedConversation].assistant && (
                     <div className={`${styles.messageContainer} ${styles.assistantMessage}`}>
                       <div className={styles.messageContent}>
-                        {conversations[selectedConversation].assistant.content}
+                        <ReactMarkdown>{conversations[selectedConversation].assistant.content}</ReactMarkdown>
                       </div>
                     </div>
                   )}
@@ -254,7 +255,11 @@ export default function Home() {
                           className={`${styles.messageContainer} ${message.role === 'user' ? styles.userMessage : styles.assistantMessage}`}
                         >
                           <div className={styles.messageContent}>
-                            {message.content}
+                            {message.role === 'assistant' ? (
+                              <ReactMarkdown>{message.content}</ReactMarkdown>
+                            ) : (
+                              message.content
+                            )}
                           </div>
                         </div>
                       ))}
@@ -265,7 +270,9 @@ export default function Home() {
                   {isLoading && !chatHistory.some(msg => msg.content === response) && (
                     <div className={`${styles.messageContainer} ${styles.assistantMessage}`}>
                       <div className={styles.messageContent}>
-                        {response || (
+                        {response ? (
+                          <ReactMarkdown>{response}</ReactMarkdown>
+                        ) : (
                           <div className={styles.typingIndicator}>
                             <span></span>
                             <span></span>
