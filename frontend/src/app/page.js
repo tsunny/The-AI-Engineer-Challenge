@@ -15,7 +15,7 @@ export default function Home() {
   
   // RAG and PDF upload state
   const [sessionId, setSessionId] = useState("");
-  const [uploadedPdf, setUploadedPdf] = useState(null);
+  const [uploadedPdfs, setUploadedPdfs] = useState([]);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [useRag, setUseRag] = useState(false);
   const [pdfExpanded, setPdfExpanded] = useState(false);
@@ -37,13 +37,22 @@ export default function Home() {
     }
   }, [apiKey]);
 
-  // Handle PDF upload
+  // Handle PDF upload (supports multiple files)
   const handlePdfUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
     if (!apiKey) {
       setModalMessage("Please provide your OpenAI API Key first");
+      setModalType("error");
+      setShowModal(true);
+      return;
+    }
+
+    // Validate file types
+    const invalidFiles = files.filter(file => !file.name.toLowerCase().endsWith('.pdf'));
+    if (invalidFiles.length > 0) {
+      setModalMessage(`Only PDF files are allowed. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`);
       setModalType("error");
       setShowModal(true);
       return;
@@ -53,7 +62,12 @@ export default function Home() {
     
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      
+      // Append all files
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
       formData.append('api_key', apiKey);
       formData.append('session_id', sessionId);
 
@@ -64,24 +78,29 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        setUploadedPdf(file.name);
+        setUploadedPdfs(result.files);
         setUseRag(true);
-        setModalMessage('PDF uploaded and processed successfully! You can now ask questions about the document.');
+        
+        const fileCount = result.total_files;
+        const fileNames = result.files.join(', ');
+        setModalMessage(`Successfully uploaded and processed ${fileCount} PDF${fileCount > 1 ? 's' : ''}: ${fileNames}`);
         setModalType("success");
         setShowModal(true);
       } else {
         const error = await response.text();
-        setModalMessage(`Failed to upload PDF: ${error}`);
+        setModalMessage(`Failed to upload PDFs: ${error}`);
         setModalType("error");
         setShowModal(true);
       }
     } catch (error) {
-      console.error('Error uploading PDF:', error);
-      setModalMessage('Error uploading PDF. Please try again.');
+      console.error('Error uploading PDFs:', error);
+      setModalMessage('Error uploading PDFs. Please try again.');
       setModalType("error");
       setShowModal(true);
     } finally {
       setIsUploadingPdf(false);
+      // Clear the file input to allow re-uploading the same files
+      event.target.value = '';
     }
   };
 
@@ -309,25 +328,31 @@ export default function Home() {
             </button>
 
             <div className={`${styles.collapsibleContent} ${pdfExpanded ? styles.collapsibleContentExpanded : ''}`}>
-              {uploadedPdf ? (
-                <div className={styles.uploadedFile}>
-                  <div className={styles.fileInfo}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2"/>
-                    </svg>
-                    <span>{uploadedPdf}</span>
+              {uploadedPdfs.length > 0 ? (
+                <div className={styles.uploadedFiles}>
+                  <div className={styles.filesList}>
+                    {uploadedPdfs.map((filename, index) => (
+                      <div key={index} className={styles.fileItem}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/>
+                          <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        <span className={styles.fileName}>{filename}</span>
+                      </div>
+                    ))}
                   </div>
                   <div className={styles.ragStatus}>
-                    <span className={styles.ragIndicator}>RAG Mode: Active</span>
+                    <span className={styles.ragIndicator}>
+                      RAG Mode: Active ({uploadedPdfs.length} PDF{uploadedPdfs.length > 1 ? 's' : ''})
+                    </span>
                     <button 
                       className={styles.clearPdf}
                       onClick={() => {
-                        setUploadedPdf(null);
+                        setUploadedPdfs([]);
                         setUseRag(false);
                       }}
                     >
-                      Clear PDF
+                      Clear All PDFs
                     </button>
                   </div>
                 </div>
@@ -337,6 +362,7 @@ export default function Home() {
                     id="pdfUpload"
                     type="file"
                     accept=".pdf"
+                    multiple
                     onChange={handlePdfUpload}
                     className={styles.fileInput}
                     disabled={isUploadingPdf}
@@ -356,8 +382,8 @@ export default function Home() {
                           <polyline points="7,10 12,15 17,10" stroke="currentColor" strokeWidth="2"/>
                           <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2"/>
                         </svg>
-                        <span>Choose PDF file or drag and drop</span>
-                        <small>Upload a PDF to enable document-based chat</small>
+                        <span>Choose PDF files or drag and drop</span>
+                        <small>Upload one or more PDFs to enable document-based chat</small>
                       </>
                     )}
                   </label>

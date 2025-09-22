@@ -10,7 +10,8 @@ import os
 import sys
 import uuid
 import asyncio
-from typing import Optional
+import tempfile
+from typing import Optional, List
 from pathlib import Path
 
 # Add current directory to Python path for Vercel
@@ -44,54 +45,77 @@ class ChatRequest(BaseModel):
     use_rag: Optional[bool] = False  # Whether to use RAG for this request
 
 
-# PDF upload endpoint
+# PDF upload endpoint - supports multiple files
 @app.post("/api/upload-pdf")
 async def upload_pdf(
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     api_key: str = Form(...),
     session_id: str = Form(...)
 ):
-    file_path = None
+    temp_files = []
     try:
-        # Validate file type
-        if not file.filename.lower().endswith('.pdf'):
-            raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+        processed_files = []
         
-        # Create uploads directory if it doesn't exist
-        uploads_dir = Path("/tmp/uploads")
-        uploads_dir.mkdir(exist_ok=True)
-        
-        # Generate unique filename
-        file_path = uploads_dir / f"{session_id}_{file.filename}"
-        
-        # Save uploaded file with proper handling to avoid multipart warnings
-        try:
-            # Read file content
-            content = await file.read()
+        # Validate and process each file
+        for file in files:
+            # Validate file type
+            if not file.filename.lower().endswith('.pdf'):
+                raise HTTPException(status_code=400, detail=f"Only PDF files are allowed. '{file.filename}' is not a PDF.")
             
-            # Write to file
-            with open(file_path, "wb") as buffer:
-                buffer.write(content)
+            # Create temporary file with PDF suffix for proper handling
+            temp_file = tempfile.NamedTemporaryFile(
+                delete=False, 
+                suffix=f"_{session_id}_{file.filename}",
+                prefix="pdf_upload_"
+            )
+            temp_files.append(temp_file.name)
+            
+            try:
+                # Read file content
+                content = await file.read()
                 
-        finally:
-            # Always close the file to prevent multipart warnings
-            await file.close()
+                # Write to temporary file
+                temp_file.write(content)
+                temp_file.flush()
+                
+                processed_files.append({
+                    "original_name": file.filename,
+                    "temp_path": temp_file.name,
+                    "size": len(content)
+                })
+                
+            finally:
+                # Close temporary file handle
+                temp_file.close()
+                # Always close the uploaded file to prevent multipart warnings
+                await file.close()
         
-        # Process PDF with RAG
+        # Process all PDFs with RAG
         rag_processor = get_or_create_rag_processor(session_id, api_key)
-        success = await rag_processor.process_pdf(str(file_path))
+        success = await rag_processor.process_multiple_pdfs([f["temp_path"] for f in processed_files])
         
         if success:
-            return {"message": "PDF uploaded and processed successfully", "session_id": session_id}
+            file_names = [f["original_name"] for f in processed_files]
+            total_size = sum(f["size"] for f in processed_files)
+            return {
+                "message": f"Successfully uploaded and processed {len(processed_files)} PDF(s)",
+                "session_id": session_id,
+                "files": file_names,
+                "total_files": len(processed_files),
+                "total_size_bytes": total_size
+            }
         else:
-            raise HTTPException(status_code=500, detail="Failed to process PDF")
+            raise HTTPException(status_code=500, detail="Failed to process one or more PDF files")
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Clean up uploaded file
-        if file_path and file_path.exists():
-            file_path.unlink()
+        # Clean up all temporary files
+        for temp_file_path in temp_files:
+            try:
+                Path(temp_file_path).unlink(missing_ok=True)
+            except Exception:
+                pass  # Ignore cleanup errors
 
 
 # Define the main chat endpoint that handles POST requests

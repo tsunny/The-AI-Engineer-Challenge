@@ -707,7 +707,8 @@
   background-color: var(--accent-color);
 }
 
-.uploadedFile {
+.uploadedFile,
+.uploadedFiles {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -715,6 +716,37 @@
   background-color: var(--response-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
+}
+
+.filesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--input-background);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.fileItem svg {
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+
+.fileName {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fileInfo {

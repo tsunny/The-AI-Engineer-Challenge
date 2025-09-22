@@ -106,21 +106,43 @@ class PDFRAGProcessor:
         self.text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
     async def process_pdf(self, pdf_path: str) -> bool:
-        """Process PDF and create vector database."""
+        """Process single PDF and create vector database."""
+        return await self.process_multiple_pdfs([pdf_path])
+    
+    async def process_multiple_pdfs(self, pdf_paths: List[str]) -> bool:
+        """Process multiple PDFs and create combined vector database."""
         try:
-            # Load PDF using the aimakerspace PDFLoader
-            pdf_loader = PDFLoader(pdf_path)
-            pdf_loader.load_file()
+            all_chunks = []
+            processed_files = []
             
-            if not pdf_loader.documents:
+            # Process each PDF
+            for pdf_path in pdf_paths:
+                try:
+                    # Load PDF using the aimakerspace PDFLoader
+                    pdf_loader = PDFLoader(pdf_path)
+                    pdf_loader.load_file()
+                    
+                    if pdf_loader.documents:
+                        # Split documents into chunks
+                        chunks = self.text_splitter.split_texts(pdf_loader.documents)
+                        
+                        # Add source information to chunks for better context
+                        filename = Path(pdf_path).name
+                        annotated_chunks = [f"[Source: {filename}] {chunk}" for chunk in chunks]
+                        
+                        all_chunks.extend(annotated_chunks)
+                        processed_files.append(filename)
+                        
+                except Exception as e:
+                    print(f"Error processing PDF {pdf_path}: {e}")
+                    continue
+            
+            if not all_chunks:
                 return False
             
-            # Split documents into chunks
-            chunks = self.text_splitter.split_texts(pdf_loader.documents)
-            
-            # Create vector database
+            # Create vector database from all chunks
             self.vector_db = VectorDatabase()
-            self.vector_db = await self.vector_db.abuild_from_list(chunks)
+            self.vector_db = await self.vector_db.abuild_from_list(all_chunks)
             
             # Create RAG pipeline
             self.rag_pipeline = RetrievalAugmentedQAPipeline(
@@ -130,10 +152,11 @@ class PDFRAGProcessor:
                 include_scores=True
             )
             
+            print(f"Successfully processed {len(processed_files)} PDF(s): {', '.join(processed_files)}")
             return True
             
         except Exception as e:
-            print(f"Error processing PDF: {e}")
+            print(f"Error processing PDFs: {e}")
             return False
     
     def query(self, user_query: str, k: int = 3) -> str:
