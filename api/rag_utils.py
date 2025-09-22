@@ -3,9 +3,23 @@ import sys
 import asyncio
 from typing import Dict, List, Optional
 from pathlib import Path
+from contextlib import contextmanager
 
 # Add current directory to Python path for Vercel
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+@contextmanager
+def temporary_api_key(api_key: str):
+    """Context manager to temporarily set OPENAI_API_KEY environment variable."""
+    original_api_key = os.environ.get("OPENAI_API_KEY")
+    os.environ["OPENAI_API_KEY"] = api_key
+    try:
+        yield
+    finally:
+        if original_api_key is None:
+            os.environ.pop("OPENAI_API_KEY", None)
+        else:
+            os.environ["OPENAI_API_KEY"] = original_api_key
 
 from aimakerspace.vectordatabase import VectorDatabase
 from aimakerspace.openai_utils.chatmodel import ChatOpenAI
@@ -96,8 +110,12 @@ class PDFRAGProcessor:
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.llm = ChatOpenAI(model_name="gpt-4o-mini")
-        # Override the API key since we're passing it from the request
+        
+        # Create ChatOpenAI with proper API key handling
+        with temporary_api_key(api_key):
+            self.llm = ChatOpenAI(model_name="gpt-4o-mini")
+        
+        # Double-check that the clients use the correct API key
         self.llm._client.api_key = api_key
         self.llm._async_client.api_key = api_key
         
@@ -140,9 +158,10 @@ class PDFRAGProcessor:
             if not all_chunks:
                 return False
             
-            # Create vector database from all chunks
-            self.vector_db = VectorDatabase()
-            self.vector_db = await self.vector_db.abuild_from_list(all_chunks)
+            # Create vector database from all chunks with proper API key handling
+            with temporary_api_key(self.api_key):
+                self.vector_db = VectorDatabase()
+                self.vector_db = await self.vector_db.abuild_from_list(all_chunks)
             
             # Create RAG pipeline
             self.rag_pipeline = RetrievalAugmentedQAPipeline(
