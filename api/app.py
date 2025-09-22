@@ -58,7 +58,7 @@ async def upload_pdf(
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
         # Create uploads directory if it doesn't exist
-        uploads_dir = Path("uploads")
+        uploads_dir = Path("/tmp/uploads")
         uploads_dir.mkdir(exist_ok=True)
         
         # Generate unique filename
