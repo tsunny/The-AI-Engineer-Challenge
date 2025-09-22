@@ -9,7 +9,6 @@ from openai import OpenAI
 import os
 import sys
 import uuid
-import shutil
 import asyncio
 from typing import Optional
 from pathlib import Path
@@ -52,6 +51,7 @@ async def upload_pdf(
     api_key: str = Form(...),
     session_id: str = Form(...)
 ):
+    file_path = None
     try:
         # Validate file type
         if not file.filename.lower().endswith('.pdf'):
@@ -64,9 +64,18 @@ async def upload_pdf(
         # Generate unique filename
         file_path = uploads_dir / f"{session_id}_{file.filename}"
         
-        # Save uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Save uploaded file with proper handling to avoid multipart warnings
+        try:
+            # Read file content
+            content = await file.read()
+            
+            # Write to file
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+                
+        finally:
+            # Always close the file to prevent multipart warnings
+            await file.close()
         
         # Process PDF with RAG
         rag_processor = get_or_create_rag_processor(session_id, api_key)
@@ -81,7 +90,7 @@ async def upload_pdf(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Clean up uploaded file
-        if 'file_path' in locals() and file_path.exists():
+        if file_path and file_path.exists():
             file_path.unlink()
 
 
